@@ -1,33 +1,136 @@
 import pytest
-from definition_782e1d948e9b4d74864fc018781e3743 import plot_aggregated_variant_effects
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from unittest.mock import patch, MagicMock
+from definition_c0aa7478bb92494baf89404efa5e8026 import plot_relationship
 
-@pytest.mark.parametrize(
-    "selected_variant_id, selected_modality, metric, expected_outcome",
-    [
-        # Test Case 1: Valid inputs - expected functionality.
-        # The provided stub `pass` returns None. In a full implementation, this would be a plot object.
-        ("var_id_123", "RNA-seq", "quantile_score", None),
-        
-        # Test Case 2: Invalid type for selected_variant_id (int instead of str).
-        (12345, "RNA-seq", "quantile_score", TypeError),
-        
-        # Test Case 3: Invalid type for selected_modality (None instead of str).
-        ("var_id_456", None, "log2fc_expression", TypeError),
-        
-        # Test Case 4: Invalid type for metric (list instead of str).
-        ("var_id_789", "ATAC-seq", ["quantile_score"], TypeError),
-        
-        # Test Case 5: Invalid value for metric (unrecognized string).
-        # A proper implementation would validate the metric string.
-        ("var_id_012", "ChIP-seq_histone", "unsupported_metric", ValueError),
-    ]
-)
-def test_plot_aggregated_variant_effects(selected_variant_id, selected_modality, metric, expected_outcome):
-    if expected_outcome is None:
-        # For valid inputs, the `pass` stub returns None.
-        # If the function were fully implemented to return a plot object, this assertion would change.
-        assert plot_aggregated_variant_effects(selected_variant_id, selected_modality, metric) is None
-    else:
-        # Expect a specific exception for invalid inputs or values.
-        with pytest.raises(expected_outcome):
-            plot_aggregated_variant_effects(selected_variant_id, selected_modality, metric)
+# Fixture for a sample DataFrame
+@pytest.fixture
+def sample_dataframe():
+    data = {
+        'numeric_feature_A': [10, 20, 30, 40, 50],
+        'numeric_feature_B': [1, 2, 3, 4, 5],
+        'categorical_feature': ['A', 'B', 'A', 'C', 'B'],
+        'another_numeric': [100, 110, 120, 130, 140]
+    }
+    return pd.DataFrame(data)
+
+# Test Case 1: Basic plot with hue and display (no save path)
+# Asserts that seaborn.scatterplot and matplotlib.pyplot.show are called.
+@patch('seaborn.scatterplot')
+@patch('matplotlib.pyplot.show')
+@patch('matplotlib.pyplot.savefig')
+def test_plot_relationship_with_hue_and_display(mock_savefig, mock_show, mock_scatterplot, sample_dataframe):
+    dataframe = sample_dataframe
+    x_col = 'numeric_feature_A'
+    y_col = 'numeric_feature_B'
+    hue_col = 'categorical_feature'
+    title = 'Test Plot with Hue'
+    x_label = 'Feature A'
+    y_label = 'Feature B'
+    color_palette = 'viridis'
+    save_path = None
+
+    plot_relationship(dataframe, x_col, y_col, hue_col, title, x_label, y_label, color_palette, save_path)
+
+    mock_scatterplot.assert_called_once_with(
+        data=dataframe,
+        x=x_col,
+        y=y_col,
+        hue=hue_col,
+        palette=color_palette
+    )
+    mock_show.assert_called_once()
+    mock_savefig.assert_not_called()
+
+# Test Case 2: Basic plot without hue and with save path (should save file)
+# Asserts that seaborn.scatterplot and matplotlib.pyplot.savefig are called.
+@patch('seaborn.scatterplot')
+@patch('matplotlib.pyplot.show')
+@patch('matplotlib.pyplot.savefig')
+def test_plot_relationship_no_hue_with_save(mock_savefig, mock_show, mock_scatterplot, sample_dataframe):
+    dataframe = sample_dataframe
+    x_col = 'numeric_feature_A'
+    y_col = 'numeric_feature_B'
+    hue_col = None
+    title = 'Test Plot No Hue'
+    x_label = 'Feature A'
+    y_label = 'Feature B'
+    color_palette = 'cividis'
+    save_path = 'test_plot.png'
+
+    plot_relationship(dataframe, x_col, y_col, hue_col, title, x_label, y_label, color_palette, save_path)
+
+    mock_scatterplot.assert_called_once_with(
+        data=dataframe,
+        x=x_col,
+        y=y_col,
+        hue=None,
+        palette=color_palette
+    )
+    mock_savefig.assert_called_once_with(save_path)
+    mock_show.assert_not_called()
+
+# Test Case 3: Missing x_col in DataFrame (edge case: KeyError expected)
+def test_plot_relationship_missing_x_col(sample_dataframe):
+    dataframe = sample_dataframe
+    x_col = 'non_existent_x'
+    y_col = 'numeric_feature_B'
+    hue_col = None
+    title = 'Test Plot Missing X'
+    x_label = 'X'
+    y_label = 'Y'
+    color_palette = 'viridis'
+    save_path = None
+
+    # A correct implementation of plot_relationship should raise a KeyError
+    # when an x_col that does not exist in the DataFrame is provided.
+    with pytest.raises(KeyError):
+        plot_relationship(dataframe, x_col, y_col, hue_col, title, x_label, y_label, color_palette, save_path)
+
+# Test Case 4: Missing hue_col in DataFrame (edge case: KeyError expected)
+def test_plot_relationship_missing_hue_col(sample_dataframe):
+    dataframe = sample_dataframe
+    x_col = 'numeric_feature_A'
+    y_col = 'numeric_feature_B'
+    hue_col = 'non_existent_hue'
+    title = 'Test Plot Missing Hue'
+    x_label = 'X'
+    y_label = 'Y'
+    color_palette = 'viridis'
+    save_path = None
+
+    # A correct implementation should raise a KeyError when a hue_col
+    # that does not exist in the DataFrame is provided.
+    with pytest.raises(KeyError):
+        plot_relationship(dataframe, x_col, y_col, hue_col, title, x_label, y_label, color_palette, save_path)
+
+# Test Case 5: Empty DataFrame (edge case: should produce an empty plot without error)
+@patch('seaborn.scatterplot')
+@patch('matplotlib.pyplot.show')
+@patch('matplotlib.pyplot.savefig')
+def test_plot_relationship_empty_dataframe(mock_savefig, mock_show, mock_scatterplot):
+    dataframe = pd.DataFrame({'x_val': [], 'y_val': [], 'hue_val': []})
+    x_col = 'x_val'
+    y_col = 'y_val'
+    hue_col = 'hue_val'
+    title = 'Empty Plot'
+    x_label = 'X-Axis'
+    y_label = 'Y-Axis'
+    color_palette = 'viridis'
+    save_path = None
+
+    # An empty DataFrame should be handled gracefully by the plotting function,
+    # resulting in an empty plot rather than an error.
+    plot_relationship(dataframe, x_col, y_col, hue_col, title, x_label, y_label, color_palette, save_path)
+
+    mock_scatterplot.assert_called_once_with(
+        data=dataframe,
+        x=x_col,
+        y=y_col,
+        hue=hue_col,
+        palette=color_palette
+    )
+    mock_show.assert_called_once()
+    mock_savefig.assert_not_called()
