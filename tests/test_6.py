@@ -1,34 +1,96 @@
 import pytest
-from definition_869719476e8c4223a24c5aac9b702b62 import plot_variant_effect_trend
-import plotly.graph_objects as go
-import matplotlib.pyplot as plt
+import pandas as pd
+from definition_34919d322a1e42efa931601cf141b8a1 import simulate_tool_execution
 
-# We assume that a successful plot generation would return a Plotly Figure or Matplotlib Figure.
-# For the purpose of testing the stub, a successful run means no exception is raised
-# and it might return None, or an actual plot object if the stub were fully implemented.
+# Helper function to create a pandas DataFrame for test inputs
+def create_test_dataframe(data_list, columns):
+    return pd.DataFrame(data_list, columns=columns)
 
-@pytest.mark.parametrize("selected_variant_id, selected_modality, selected_tissue, plot_interval_width, plot_interval_shift, expected_exception", [
-    # Test Case 1: Happy Path - All valid and reasonable parameters
-    ("rs12345", "RNA-seq", "Liver", 5000, 0, None),
-    # Test Case 2: Invalid type for selected_variant_id (int instead of str)
-    (12345, "RNA-seq", "Liver", 5000, 0, TypeError),
-    # Test Case 3: Invalid type for plot_interval_width (str instead of int/float)
-    ("rs12345", "RNA-seq", "Liver", "wide", 0, TypeError),
-    # Test Case 4: Invalid value for plot_interval_width (zero, should be positive)
-    ("rs12345", "RNA-seq", "Liver", 0, 0, ValueError),
-    # Test Case 5: Invalid type for selected_tissue (list instead of str)
-    ("rs12345", "RNA-seq", ["Liver"], 5000, 0, TypeError),
-])
-def test_plot_variant_effect_trend(selected_variant_id, selected_modality, selected_tissue, plot_interval_width, plot_interval_shift, expected_exception):
-    if expected_exception is None:
-        # Assuming successful execution might return None for a stub, or a plot object
-        # The key is that it should not raise an exception for valid inputs.
-        try:
-            # We don't assert a return value for the stub as it's 'pass'
-            plot_variant_effect_trend(selected_variant_id, selected_modality, selected_tissue, plot_interval_width, plot_interval_shift)
-        except Exception as e:
-            pytest.fail(f"Valid inputs raised an unexpected exception: {type(e).__name__}({e})")
-    else:
-        # Expecting an exception
-        with pytest.raises(expected_exception):
-            plot_variant_effect_trend(selected_variant_id, selected_modality, selected_tissue, plot_interval_width, plot_interval_shift)
+# Define common columns for the synthetic data
+TEST_COLUMNS = ['gene_expression_level', 'tissue_type', 'gene_name']
+
+@pytest.mark.parametrize(
+    "data_input, tool_parameters_input, expected_output",
+    [
+        # Test Case 1: Successful filtering with all relevant parameters
+        (
+            create_test_dataframe(
+                [[0.1, 'liver', 'SORT1'], [0.02, 'brain', 'BRCA1'], [0.06, 'liver', 'SORT1'], [0.15, 'kidney', 'SORT1']],
+                TEST_COLUMNS
+            ),
+            {
+                'gene_name': {'extracted_value': 'SORT1', 'mapped_successfully': True},
+                'tissue_type': {'extracted_value': 'liver', 'mapped_successfully': True},
+                'min_expression_level': {'extracted_value': 0.05, 'mapped_successfully': True}
+            },
+            {
+                'simulated_results': {
+                    'filtered_dataframe_head': [{'gene_expression_level': 0.06, 'tissue_type': 'liver', 'gene_name': 'SORT1'}],
+                    'number_of_filtered_rows': 1
+                }
+            }
+        ),
+        # Test Case 2: No relevant parameters in tool_parameters (should return original data)
+        (
+            create_test_dataframe(
+                [[0.1, 'liver', 'SORT1'], [0.02, 'brain', 'BRCA1'], [0.06, 'liver', 'SORT1']],
+                TEST_COLUMNS
+            ),
+            {
+                'some_other_param': {'extracted_value': 'value', 'mapped_successfully': True}
+            },
+            {
+                'simulated_results': {
+                    'filtered_dataframe_head': [
+                        {'gene_expression_level': 0.1, 'tissue_type': 'liver', 'gene_name': 'SORT1'},
+                        {'gene_expression_level': 0.02, 'tissue_type': 'brain', 'gene_name': 'BRCA1'},
+                        {'gene_expression_level': 0.06, 'tissue_type': 'liver', 'gene_name': 'SORT1'}
+                    ],
+                    'number_of_filtered_rows': 3
+                }
+            }
+        ),
+        # Test Case 3: Filtering results in an empty DataFrame (no matching rows)
+        (
+            create_test_dataframe(
+                [[0.1, 'liver', 'SORT1'], [0.02, 'brain', 'BRCA1']],
+                TEST_COLUMNS
+            ),
+            {
+                'gene_name': {'extracted_value': 'NONEXISTENT', 'mapped_successfully': True}
+            },
+            {
+                'simulated_results': {
+                    'filtered_dataframe_head': [],
+                    'number_of_filtered_rows': 0
+                }
+            }
+        ),
+        # Test Case 4: Invalid 'data' input type (not a pandas.DataFrame)
+        (
+            [1, 2, 3],  # list instead of DataFrame
+            {
+                'gene_name': {'extracted_value': 'SORT1', 'mapped_successfully': True}
+            },
+            TypeError  # Expected exception
+        ),
+        # Test Case 5: Invalid 'tool_parameters' input type (not a dictionary)
+        (
+            create_test_dataframe(
+                [[0.1, 'liver', 'SORT1']],
+                TEST_COLUMNS
+            ),
+            None,  # None instead of dict
+            TypeError  # Expected exception
+        ),
+    ]
+)
+def test_simulate_tool_execution(data_input, tool_parameters_input, expected_output):
+    try:
+        result = simulate_tool_execution(data_input, tool_parameters_input)
+        # If no exception was expected, assert the result
+        assert not isinstance(expected_output, type) # Check if expected_output is not an exception class
+        assert result == expected_output
+    except Exception as e:
+        # If an exception was expected, assert its type
+        assert isinstance(e, expected_output)
