@@ -1,87 +1,114 @@
 import pytest
-import pandas as pd
-from definition_5e468c073ad14684aa395b57aed03dff import display_variant_scores_summary
+import collections
+from definition_0b6c01c637254387b1edd62c1044415f import generate_mcp_tool_snippet
 
-# Mock DataFrame that `display_variant_scores_summary` is expected to operate on.
-# In a real testing setup, this DataFrame (`synthetic_scores_df`) would typically
-# be provided by a fixture or patched into the module where `display_variant_scores_summary` is defined.
-# Here, it's defined globally so that `expected_result` DataFrames can be pre-calculated
-# for the @pytest.mark.parametrize decorator.
-_mock_synthetic_scores_df = pd.DataFrame({
-    'variant_id': ['VAR001', 'VAR001', 'VAR001', 'VAR002', 'VAR002', 'VAR003', 'VAR003'],
-    'modality': ['RNA-seq', 'RNA-seq', 'ATAC-seq', 'RNA-seq', 'ATAC-seq', 'ChIP-seq_histone', 'RNA-seq'],
-    'tissue_cell_type': ['Liver', 'Brain', 'Liver', 'Lung', 'Kidney', 'Brain', 'Liver'],
-    'quantile_score': [0.95, 0.10, 0.70, 0.88, 0.25, 0.55, 0.60],
-    'log2fc_expression': [1.2, -0.5, 0.1, 0.9, -0.1, 0.0, 0.3]
-})
+# Helper definitions for MCPTool and Parameter, assuming these are defined
+# in your_module or are fundamental data structures for the function.
+# For robust testing, we define them here to ensure consistency.
+Parameter = collections.namedtuple('Parameter', ['name', 'type', 'description', 'default_value'])
+MCPTool = collections.namedtuple('MCPTool', ['name', 'description', 'input_parameters', 'output_structure'])
 
-# Helper function to generate expected DataFrames for comparison.
-# This simulates the intended filtering logic of `display_variant_scores_summary`.
-def _get_expected_filtered_df(variant_id: str, modality: str) -> pd.DataFrame:
-    # This helper explicitly takes string types as expected by the function under test.
-    filtered_df = _mock_synthetic_scores_df[
-        (_mock_synthetic_scores_df['variant_id'] == variant_id) &
-        (_mock_synthetic_scores_df['modality'] == modality)
+def test_generate_mcp_tool_snippet_standard_tool():
+    """
+    Test case 1: Verifies correct snippet generation for a standard tool
+    with a mix of required and optional parameters of various types.
+    """
+    tool_params = [
+        Parameter('tissue_type', 'str', 'Specific tissue type.', None), # Required parameter
+        Parameter('gene_name', 'str', 'The name of the gene.', 'SORT1'), # Optional parameter with default
+        Parameter('min_expression', 'float', 'Minimum expression level.', 0.05),
+        Parameter('max_results', 'int', 'Max results to return.', 100)
     ]
-    return filtered_df.reset_index(drop=True)
+    mcp_tool_standard = MCPTool(
+        name='analyze_gene_expression',
+        description='Analyzes gene expression levels and returns insights.',
+        input_parameters=tool_params,
+        output_structure='dict'
+    )
+    expected_snippet = """@mcp.tools
+def analyze_gene_expression(tissue_type: str, gene_name: str = 'SORT1', min_expression: float = 0.05, max_results: int = 100):
+    \"\"\"
+        Analyzes gene expression levels and returns insights.
+    \"\"\"
+    pass"""
+    assert generate_mcp_tool_snippet(mcp_tool_standard) == expected_snippet
 
-# Pre-calculate expected DataFrames based on the mock data and intended logic.
-expected_df_var001_rna_seq = _get_expected_filtered_df('VAR001', 'RNA-seq')
-expected_df_var001_atac_seq = _get_expected_filtered_df('VAR001', 'ATAC-seq')
+def test_generate_mcp_tool_snippet_no_parameters():
+    """
+    Test case 2: Checks snippet generation for a tool with no input parameters.
+    The function signature should be empty `()`.
+    """
+    mcp_tool_no_params = MCPTool(
+        name='get_system_status',
+        description='Retrieves the current system status.',
+        input_parameters=[],
+        output_structure='str'
+    )
+    expected_snippet = """@mcp.tools
+def get_system_status():
+    \"\"\"
+        Retrieves the current system status.
+    \"\"\"
+    pass"""
+    assert generate_mcp_tool_snippet(mcp_tool_no_params) == expected_snippet
 
-# Create an empty DataFrame with the same columns and dtypes as the mock data.
-# This is crucial for `pd.testing.assert_frame_equal` when no matches are found,
-# as it expects column types to match.
-_empty_df_template = pd.DataFrame(columns=_mock_synthetic_scores_df.columns)
-expected_df_empty = _empty_df_template.astype(_mock_synthetic_scores_df.dtypes)
-
-
-@pytest.mark.parametrize(
-    "selected_variant_id, selected_modality, expected_result",
-    [
-        # Test 1: Expected functionality - valid variant and modality, multiple matches.
-        # This covers a common usage scenario where a variant has scores across multiple tissue types for a modality.
-        ('VAR001', 'RNA-seq', expected_df_var001_rna_seq),
-
-        # Test 2: Expected functionality - valid variant and modality, single match.
-        # Checks filtering for a specific, less numerous outcome to ensure precision.
-        ('VAR001', 'ATAC-seq', expected_df_var001_atac_seq),
-
-        # Test 3: Edge case - variant ID not found.
-        # Ensures the function gracefully handles non-existent variants by returning an empty DataFrame.
-        ('NONEXISTENT_VAR', 'RNA-seq', expected_df_empty),
-
-        # Test 4: Edge case - modality not found.
-        # Ensures the function handles non-existent modalities by returning an empty DataFrame.
-        ('VAR002', 'NONEXISTENT_MODALITY', expected_df_empty),
-
-        # Test 5: Edge case - invalid input type for selected_variant_id.
-        # Verifies robust error handling for unexpected input types, expecting a TypeError.
-        (123, 'RNA-seq', TypeError),
-
-        # Note: If more test cases were allowed (max 5 in this request), an invalid type for
-        # selected_modality like ('VAR001', None) could also be added for comprehensive type checking.
+def test_generate_mcp_tool_snippet_all_required_parameters():
+    """
+    Test case 3: Ensures correct signature generation when all parameters are required
+    (i.e., have no default values).
+    """
+    tool_params_no_defaults = [
+        Parameter('file_path', 'str', 'Path to the file to process.', None),
+        Parameter('threshold', 'float', 'Processing threshold value.', None),
     ]
-)
-def test_display_variant_scores_summary(selected_variant_id, selected_modality, expected_result):
-    try:
-        # Assuming `display_variant_scores_summary` from definition_5e468c073ad14684aa395b57aed03dff
-        # will internally access a DataFrame like `_mock_synthetic_scores_df`.
-        # In a full test setup, this dependency would typically be managed
-        # (e.g., via monkeypatching a module-level `synthetic_scores_df` to `_mock_synthetic_scores_df`).
-        result = display_variant_scores_summary(selected_variant_id, selected_modality)
+    mcp_tool_all_required = MCPTool(
+        name='process_data',
+        description='Processes data from a given file path with a specified threshold.',
+        input_parameters=tool_params_no_defaults,
+        output_structure='DataFrame'
+    )
+    expected_snippet = """@mcp.tools
+def process_data(file_path: str, threshold: float):
+    \"\"\"
+        Processes data from a given file path with a specified threshold.
+    \"\"\"
+    pass"""
+    assert generate_mcp_tool_snippet(mcp_tool_all_required) == expected_snippet
 
-        # If an exception type is expected, the execution should jump to the `except` block.
-        # If it reaches here, no exception was raised, so if an exception was expected, it's a failure.
-        if isinstance(expected_result, type) and issubclass(expected_result, Exception):
-            pytest.fail(f"Expected {expected_result.__name__} but no exception was raised.")
-        else:
-            # For DataFrame comparisons, use pandas testing utility for robust checks.
-            pd.testing.assert_frame_equal(result, expected_result)
-    except Exception as e:
-        # If an exception was caught, check if it matches the expected exception type.
-        if isinstance(expected_result, type) and issubclass(expected_result, Exception):
-            assert isinstance(e, expected_result)
-        else:
-            # If an unexpected exception occurred, fail the test.
-            pytest.fail(f"An unexpected exception {type(e).__name__} was raised: {e}")
+def test_generate_mcp_tool_snippet_empty_description():
+    """
+    Test case 4: Verifies the behavior when the MCPTool has an empty description.
+    The docstring block should still be present but empty.
+    """
+    tool_params_empty_desc = [
+        Parameter('input_id', 'int', 'ID for the input.', 1)
+    ]
+    mcp_tool_empty_desc = MCPTool(
+        name='simple_action',
+        description='',  # Empty description
+        input_parameters=tool_params_empty_desc,
+        output_structure='bool'
+    )
+    expected_snippet = """@mcp.tools
+def simple_action(input_id: int = 1):
+    \"\"\"
+    \"\"\"
+    pass"""
+    assert generate_mcp_tool_snippet(mcp_tool_empty_desc) == expected_snippet
+
+@pytest.mark.parametrize("invalid_input", [
+    None,
+    123,
+    "not_an_mcp_tool",
+    [],
+    {},
+    object(),
+])
+def test_generate_mcp_tool_snippet_invalid_mcp_tool_type(invalid_input):
+    """
+    Test case 5: Checks for appropriate error handling when the input `mcp_tool`
+    is not an instance of MCPTool or is malformed. Expects an AttributeError
+    as the function would attempt to access attributes like .name, .description, etc.
+    """
+    with pytest.raises(AttributeError):
+        generate_mcp_tool_snippet(invalid_input)
