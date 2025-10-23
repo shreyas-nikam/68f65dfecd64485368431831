@@ -1,461 +1,313 @@
 
-# Technical Specification for Jupyter Notebook: AlphaGenome Variant Explorer
+# Technical Specification for Jupyter Notebook: MCP Tool Designer
 
 ## 1. Notebook Overview
 
-This Jupyter Notebook serves as an interactive lab for exploring the conceptual functionality of the AlphaGenome agent, specifically focusing on its capabilities in interpreting genetic variants and predicting their regulatory effects across multiple modalities. Using synthetic data, it aims to demonstrate how an AI agent like AlphaGenome makes complex genomic analysis accessible.
+This Jupyter Notebook provides an interactive environment to design and simulate Model Context Protocol (MCP) tools, the fundamental building blocks for AI agents as described in the Paper2Agent framework. Users will gain practical experience in defining tool structures, simulating agent interactions, and visualizing parameter mappings.
 
-#### Learning Goals
-- Understand the capabilities of the AlphaGenome model in predicting the functional consequences of genetic variants.
-- Learn how to interpret multi-modal predictions (e.g., gene expression, chromatin accessibility) of variant effects.
-- Explore how different input parameters influence variant effect predictions and visualizations.
-- Appreciate the accessibility of complex genomic analysis through AI agents, as described in the AlphaGenome agent case study.
+### Learning Goals
+
+*   Understand the core components of an MCP tool, including its name, description, input parameters, and expected outputs, based on the Paper2Agent framework.
+*   Learn how to define clear and flexible input parameters with specified data types, descriptions, and default values, as exemplified by tools within AlphaGenome and Scanpy.
+*   Explore the conceptual process of how natural language prompts are translated into structured tool invocations by a simulated AI agent.
+*   Grasp the concept of MCP as a standardized protocol for exposing APIs and tools to large language models (LLMs) and agent frameworks.
+*   Develop skills in generating and validating structured tool definitions.
+*   Understand data validation techniques and generate insightful visualizations for various data types.
 
 ## 2. Code Requirements
 
 ### List of Expected Libraries
-The notebook will utilize standard open-source Python libraries available on PyPI.
--   `pandas`: For data manipulation and tabular data representation.
--   `numpy`: For numerical operations, especially in synthetic data generation.
--   `matplotlib.pyplot`: For static plotting functionalities.
--   `seaborn`: For enhanced statistical data visualization.
--   `plotly.express`: For interactive data visualization, including scatter, line, bar, and area plots.
--   `ipywidgets`: For creating interactive controls such as sliders, dropdowns, and text inputs, to simulate user interaction with the AlphaGenome agent.
--   `sklearn.datasets`: Potentially for generating simple synthetic datasets if more complex patterns are desired, though simple random generation should suffice for variant data.
 
-### List of Algorithms or Functions to be Implemented (without code)
-The following conceptual functions will be demonstrated through synthetic data generation and visualization:
+1.  `pandas`: For data manipulation and tabular data handling.
+2.  `numpy`: For numerical operations and synthetic data generation.
+3.  `matplotlib.pyplot`: For static plotting and fallback visualizations.
+4.  `seaborn`: For enhanced statistical data visualization, utilizing color-blind friendly palettes.
+5.  `ipywidgets`: For interactive user inputs (sliders, dropdowns, text inputs) and interactive plot controls.
+6.  `IPython.display`: For displaying rich output like Markdown and images.
+7.  `datetime`: For handling time-series data generation.
+8.  `collections.namedtuple`: For a simple, structured definition of MCP tools and parameters.
 
-1.  **`generate_synthetic_genetic_variants`**:
-    *   **Purpose**: Creates a synthetic dataset of genetic variants with specified properties.
-    *   **Inputs**: Number of variants, chromosome range (e.g., "chr1" to "chr22"), typical genomic position ranges, organisms (e.g., "human", "mouse").
-    *   **Outputs**: A Pandas DataFrame containing `variant_id`, `chromosome`, `position`, `reference_allele`, `alternate_allele`, `organism`.
+### List of Algorithms or Functions to be Implemented
 
-2.  **`simulate_variant_effect_scoring`**:
-    *   **Purpose**: Generates synthetic predictions mimicking AlphaGenome's `score_variant_effect()` tool.
-    *   **Inputs**: Genetic variants DataFrame, list of modalities (e.g., "RNA-seq", "ATAC-seq", "ChIP-seq_histone", "Splice_Sites"), list of tissue/cell types (e.g., "Liver", "Muscle", "Brain").
-    *   **Outputs**: A Pandas DataFrame containing `variant_id`, `modality`, `tissue_cell_type`, `quantile_score` (between 0 and 1), `log2fc_expression` (for expression-related modalities).
+1.  **`generate_synthetic_data(num_rows, start_date, num_categories)`**: Generates a `pandas.DataFrame` with specified rows, starting date for time-series, and number of categories. It will include numeric, categorical, and time-series columns, mimicking data suitable for genomic or biological analysis (e.g., `timestamp`, `entity_id`, `numeric_feature_A`, `numeric_feature_B`, `categorical_feature`, `gene_expression_level`, `tissue_type`).
+2.  **`validate_and_summarize_data(dataframe)`**: Confirms expected column names and data types, asserts primary-key uniqueness (`entity_id`), checks for missing values in critical fields, and logs summary statistics for numeric columns (mean, std, min, max, quartiles).
+3.  **`MCPTool` Class Definition**: A Python class or `namedtuple` to represent an MCP tool, containing attributes like `name`, `description`, `input_parameters` (a list of `Parameter` objects), and `output_structure`.
+4.  **`Parameter` Class Definition**: A Python class or `namedtuple` to represent an input parameter, containing attributes like `name`, `type` (as a string, e.g., "str", "int", "float", "list"), `description`, and `default_value`.
+5.  **`validate_mcp_tool_definition(mcp_tool)`**: Validates an `MCPTool` instance. Checks if `name`, `description`, and `output_structure` are non-empty strings. For each `input_parameter`, it checks if `name`, `type`, and `description` are non-empty, and if the specified `type` string can be resolved to a valid Python type (e.g., `eval("int")`).
+6.  **`simulate_prompt_parsing(mcp_tool, prompt_text)`**: Simulates an AI agent parsing a natural language `prompt_text` to extract values for `mcp_tool`'s input parameters. This function will use simple string matching (e.g., regex-like patterns) or keyword extraction to find and map values, returning a dictionary of `{'parameter_name': 'extracted_value', 'mapped_successfully': True/False}`. It will use predefined keywords associated with parameter names for this simulation.
+7.  **`visualize_parameter_mapping(mapping_results)`**: Generates a `pandas.DataFrame` and displays it, showing `Parameter Name`, `Expected Type`, `Extracted Value`, and `Mapped Successfully` status for clear feedback on prompt parsing.
+8.  **`generate_mcp_tool_snippet(mcp_tool)`**: Generates a Python-like code string for the defined `mcp_tool`, illustrating how it would be encapsulated with an `@mcp.tools` decorator, including its function signature based on `input_parameters` and a docstring from `tool_description`.
+9.  **`simulate_tool_execution(data, tool_parameters)`**: A dummy function that simulates the execution of the defined MCP tool. It takes the synthetic `data` and the `tool_parameters` (extracted from prompt parsing) and performs a placeholder operation (e.g., filtering the dataset based on `gene_expression_level` and `tissue_type` if they are in `tool_parameters`). It returns a dictionary of 'simulated_results'.
+10. **`plot_time_series(dataframe, time_col, value_col, title, x_label, y_label, color_palette='viridis', save_path=None)`**: Generates a line plot using `seaborn.lineplot` for time-based metrics.
+11. **`plot_relationship(dataframe, x_col, y_col, hue_col=None, title, x_label, y_label, color_palette='viridis', save_path=None)`**: Generates a scatter plot using `seaborn.scatterplot` to examine correlations.
+12. **`plot_categorical_comparison(dataframe, category_col, value_col, aggregation_func='mean', title, x_label, y_label, color_palette='viridis', save_path=None)`**: Generates a bar plot or heatmap using `seaborn.barplot` (after aggregation) for categorical insights.
+13. **`make_interactive_plot(plot_func, data, **widget_params)`**: A wrapper function using `ipywidgets.interactive` to enable user interaction with the plotting functions by providing dropdowns for column selection, text inputs for titles/labels, etc.
 
-3.  **`simulate_visualization_data`**:
-    *   **Purpose**: Generates synthetic data suitable for plotting variant effects across genomic regions, mimicking AlphaGenome's `visualize_variant_effects()` tool.
-    *   **Inputs**: Selected variant, modality, tissue/cell type, plot interval width, plot interval shift.
-    *   **Outputs**: A Pandas DataFrame containing `genomic_position_relative` (position relative to variant center), `predicted_effect_value` (e.g., gene expression change, chromatin accessibility).
+### Visualization like charts, tables, plots that should be generated
 
-4.  **`validate_data`**:
-    *   **Purpose**: Checks data integrity, including column names, data types, and presence of critical missing values.
-    *   **Inputs**: Any DataFrame to be validated.
-    *   **Outputs**: Boolean indicating validity, and a log of any issues found.
-
-5.  **`display_summary_statistics`**:
-    *   **Purpose**: Provides descriptive statistics for numeric columns.
-    *   **Inputs**: Any DataFrame.
-    *   **Outputs**: A DataFrame containing summary statistics (mean, std, min, max, quartiles).
-
-### Visualization like Charts, Tables, Plots to be Generated
-
-The notebook will generate the following types of visualizations, with an emphasis on interactivity using `plotly.express` and static fallback using `matplotlib.pyplot`/`seaborn`:
-
-1.  **Trend Plot (Line/Area)**:
-    *   **Content**: Predicted gene expression changes or chromatin accessibility across a genomic region, showing the effect of a specific variant.
-    *   **X-axis**: `genomic_position_relative`.
-    *   **Y-axis**: `predicted_effect_value`.
-    *   **Customization**: Plot interval width and shift from variant center (controlled by user sliders).
-    *   **Color palette**: Color-blind friendly, with clear distinction between reference and alternate allele effects (though this notebook will simplify to a single variant's effect profile).
-
-2.  **Relationship Plot (Scatter Plot)**:
-    *   **Content**: Examination of correlations between `quantile_score` values for a variant across different tissue/cell types or modalities.
-    *   **X-axis**: `quantile_score` for Tissue Type A.
-    *   **Y-axis**: `quantile_score` for Tissue Type B (or other comparative metric).
-    *   **Customization**: Selection of specific tissues/modalities for comparison via dropdowns.
-
-3.  **Aggregated Comparison (Bar/Heatmap)**:
-    *   **Content**: Comparison of variant effects (e.g., `quantile_score` or `log2fc_expression`) across multiple tissues or cell types for a selected modality.
-    *   **Bar Plot**:
-        *   **X-axis**: `tissue_cell_type`.
-        *   **Y-axis**: `quantile_score` or `log2fc_expression`.
-        *   **Customization**: Selection of modality via dropdown.
-    *   **Heatmap**:
-        *   **Rows/Columns**: `modality`, `tissue_cell_type`.
-        *   **Color intensity**: `quantile_score` or `log2fc_expression`.
-        *   **Customization**: Selection of specific variants to display.
-
-All plots will include clear titles, labeled axes, and legends. Font size will be at least 12pt.
+1.  **Tables for Data Overview:** `pandas.DataFrame` displays of synthetic data head, `info()`, `describe()`, and validation results.
+2.  **Parameter Mapping Table:** A `pandas.DataFrame` visualizing `Parameter Name`, `Expected Type`, `Extracted Value`, and `Mapped Successfully` from prompt parsing.
+3.  **Core Visual 1: Trend Plot (Line Plot)**: A line plot showing trends over time, e.g., `gene_expression_level` over `timestamp`.
+    *   **Style:** `seaborn.lineplot`, color-blind friendly palette (`viridis`, `cividis`, or `mako`), font size $\ge 12 \text{pt}$.
+    *   **Elements:** Clear title, labeled X and Y axes, legend if multiple lines.
+    *   **Interactivity:** Allow selection of `value_col` and aggregation (mean, sum) via `ipywidgets` dropdowns/sliders.
+    *   **Fallback:** Static PNG saved if interactive environment not available.
+4.  **Core Visual 2: Relationship Plot (Scatter Plot)**: A scatter plot examining correlations between two numeric features, potentially with a categorical hue. E.g., `numeric_feature_A` vs. `numeric_feature_B`, colored by `categorical_feature` or `tissue_type`.
+    *   **Style:** `seaborn.scatterplot`, color-blind friendly palette, font size $\ge 12 \text{pt}$.
+    *   **Elements:** Clear title, labeled X and Y axes, legend for hue.
+    *   **Interactivity:** Allow selection of `x_col`, `y_col`, and optional `hue_col` via `ipywidgets` dropdowns.
+    *   **Fallback:** Static PNG saved.
+5.  **Core Visual 3: Aggregated Comparison (Bar Plot)**: A bar plot or heatmap comparing a numeric metric across categories. E.g., average `gene_expression_level` per `tissue_type` or `categorical_feature`.
+    *   **Style:** `seaborn.barplot`, color-blind friendly palette, font size $\ge 12 \text{pt}$.
+    *   **Elements:** Clear title, labeled X and Y axes, legend if applicable.
+    *   **Interactivity:** Allow selection of `category_col`, `value_col`, and aggregation function (mean, median, sum) via `ipywidgets` dropdowns.
+    *   **Fallback:** Static PNG saved.
 
 ## 3. Notebook Sections (in detail)
 
-The notebook will be structured into 16 detailed sections, each following the Markdown-Code (function)-Code (execution)-Markdown (explanation) pattern.
+### Section 1: Introduction to Paper2Agent and MCP Tools
+
+*   **Markdown Cell:**
+    Explains the context of Paper2Agent as an automated framework converting research papers into interactive AI agents. Introduces Model Context Protocol (MCP) as a standardized way to expose APIs and tools to LLMs and agent frameworks. Emphasizes how MCP tools encapsulate methodological contributions from papers, enabling natural language interaction and autonomous execution. Mentions the core components of MCP tools: name, description, input parameters, and output structure, referencing Figure 2B of the Paper2Agent paper.
+
+### Section 2: Environment Setup and Library Imports
+
+*   **Markdown Cell:**
+    Explains the necessary Python libraries for data handling, numerical operations, interactive widgets, and advanced visualizations. It highlights the use of `ipywidgets` for user interaction and `seaborn` for creating aesthetically pleasing and accessible plots with color-blind friendly palettes.
+*   **Code Cell (Imports):**
+    This cell imports all required libraries:
+    `pandas`, `numpy`, `matplotlib.pyplot`, `seaborn`, `ipywidgets`, `IPython.display`, `datetime`, `collections.namedtuple`.
+*   **Code Cell (Execution):**
+    No direct execution, just imports.
+*   **Markdown Cell:**
+    Confirms that all libraries have been imported successfully, making them available for use throughout the notebook.
+
+### Section 3: Synthetic Dataset Generation
+
+*   **Markdown Cell:**
+    Describes the generation of a synthetic dataset to simulate real-world biological or genomic data. The dataset will include time-series, numerical, and categorical features to allow for diverse analytical scenarios.
+    $$ N_{\text{rows}} $$
+    where $N_{\text{rows}}$ is the number of rows (e.g., samples or observations).
+    The dataset will contain the following columns:
+    *   `timestamp`: A `datetime` column, simulating temporal progression.
+    *   `entity_id`: An `int` column, serving as a unique identifier for each observation.
+    *   `numeric_feature_A`: A `float` column, representing a continuous measurement.
+    *   `numeric_feature_B`: A `float` column, representing another continuous measurement, possibly correlated with `numeric_feature_A`.
+    *   `categorical_feature`: A `string` column with a few distinct categories.
+    *   `gene_expression_level`: A `float` column, simulating gene expression.
+    *   `tissue_type`: A `string` column, representing different tissue types (e.g., 'liver', 'muscle', 'brain').
+*   **Code Cell (Function Definition):**
+    Define `generate_synthetic_data(num_rows, start_date, num_categories)`:
+    This function uses `numpy.random.rand` for numeric data, `pandas.date_range` for timestamps, and random choices for categorical data. It creates and returns a `pandas.DataFrame`.
+*   **Code Cell (Execution):**
+    Execute `generate_synthetic_data` with `num_rows=1000`, `start_date='2023-01-01'`, `num_categories=3` to create `synthetic_df`. Display the head of `synthetic_df` and its `.info()`.
+*   **Markdown Cell:**
+    Explains the structure of the generated synthetic dataset, showing the first few rows and detailing the data types and non-null counts for each column.
+
+### Section 4: Dataset Validation and Summary Statistics
+
+*   **Markdown Cell:**
+    Emphasizes the importance of data validation to ensure data quality and integrity before analysis. This step confirms expected column names, data types, primary key uniqueness, and absence of critical missing values, as well as providing key descriptive statistics.
+*   **Code Cell (Function Definition):**
+    Define `validate_and_summarize_data(dataframe)`:
+    This function performs the validation:
+    1.  Checks for expected columns (`timestamp`, `entity_id`, `numeric_feature_A`, `numeric_feature_B`, `categorical_feature`, `gene_expression_level`, `tissue_type`) and their `dtype`s.
+    2.  Asserts `entity_id` column has unique values.
+    3.  Checks for any missing values in `numeric_feature_A`, `numeric_feature_B`, `gene_expression_level`, and `tissue_type`.
+    4.  Prints `dataframe.describe()` for all numeric columns.
+    5.  Prints `dataframe.value_counts()` for categorical columns.
+*   **Code Cell (Execution):**
+    Execute `validate_and_summarize_data(synthetic_df)`.
+*   **Markdown Cell:**
+    Interprets the output of the validation and summary statistics, confirming data readiness and highlighting key characteristics of the synthetic dataset.
+
+### Section 5: Defining a Base MCP Tool Structure
+
+*   **Markdown Cell:**
+    Introduces the fundamental structure for defining an MCP tool, which mimics the design shown in Paper2Agent's Figure 2B. This structure allows agents to understand a tool's capabilities, its required inputs, and expected outputs. It uses simple Python constructs for clarity.
+    An MCP tool consists of:
+    *   `name`: A unique identifier for the tool.
+    *   `description`: A natural language explanation of what the tool does.
+    *   `input_parameters`: A list of `Parameter` objects, each detailing an input.
+    *   `output_structure`: A description of the data or artifacts produced by the tool.
+*   **Code Cell (Class/NamedTuple Definition):**
+    Define `Parameter` (e.g., `namedtuple('Parameter', ['name', 'type', 'description', 'default_value'])`) and `MCPTool` (e.g., `namedtuple('MCPTool', ['name', 'description', 'input_parameters', 'output_structure'])`).
+*   **Code Cell (Execution):**
+    Create a sample `MCPTool` instance, e.g., `visualize_variant_effects_tool`:
+    *   `name`: "visualize_variant_effects"
+    *   `description`: "Generates modality-specific visualizations that simplify the interpretation of regulatory impact for a given gene and tissue."
+    *   `input_parameters`: A list containing:
+        *   `Parameter('gene_name', 'str', 'The name of the gene to visualize effects for.', 'SORT1')`
+        *   `Parameter('tissue_type', 'str', 'The specific tissue type for the analysis (e.g., "liver", "muscle").', 'liver')`
+        *   `Parameter('min_expression_level', 'float', 'Minimum gene expression level to consider.', 0.01)`
+    *   `output_structure`: "A dictionary containing visualization plots (PNG bytes) and summary statistics (DataFrame)."
+    Display the created `visualize_variant_effects_tool`.
+*   **Markdown Cell:**
+    Explains the structure of the `visualize_variant_effects_tool` object, detailing how each component (`name`, `description`, `input_parameters`, `output_structure`) contributes to a clear and functional tool definition.
+
+### Section 6: User Input for Tool Definition (Simulated via Widgets)
+
+*   **Markdown Cell:**
+    Simulates the user interface for defining an MCP tool. Users can specify the tool's core attributes and its input parameters using interactive widgets, mirroring the "Tool Definition Form" feature.
+*   **Code Cell (Function Definition & Widget Setup):**
+    Define an interactive function `define_tool_widgets(tool_name, tool_desc, output_struct, param1_name, param1_type, param1_desc, param1_default)` that uses `ipywidgets.Text` for tool-level details and `ipywidgets.Text`, `ipywidgets.Dropdown` for parameter details. This function captures these inputs.
+    Use `ipywidgets.interactive` to display the widgets.
+    *   `tool_name_widget = ipywidgets.Text(value='analyze_gene_expression', description='Tool Name:')`
+    *   `tool_desc_widget = ipywidgets.Textarea(value='Analyzes gene expression for a given gene and tissue, providing summary statistics.', description='Description:')`
+    *   `output_struct_widget = ipywidgets.Text(value='{"summary_df": "pandas.DataFrame", "plot_path": "str"}', description='Output Structure:')`
+    *   `param1_name_widget = ipywidgets.Text(value='target_gene', description='Param Name 1:')`
+    *   `param1_type_widget = ipywidgets.Dropdown(options=['str', 'int', 'float', 'bool'], value='str', description='Param Type 1:')`
+    *   `param1_desc_widget = ipywidgets.Text(value='The gene identifier to analyze.', description='Param Desc 1:')`
+    *   `param1_default_widget = ipywidgets.Text(value='EGFR', description='Param Default 1:')`
+    (Repeat for a second parameter `tissue_type` or `threshold_value`)
+    A function to collect these widget values into an `MCPTool` object once the user is satisfied.
+*   **Code Cell (Execution):**
+    Display the widgets and capture the current values into a new `user_defined_mcp_tool` object upon interaction.
+    `IPython.display.display(interactive_widget_for_tool_definition)`
+    `user_defined_mcp_tool = collect_widget_values_into_mcp_tool_func(...)`
+    Display `user_defined_mcp_tool`.
+*   **Markdown Cell:**
+    Illustrates how user inputs through the interactive widgets are captured and transformed into a structured `MCPTool` object, ready for further validation or simulation.
+
+### Section 7: Parameter Validation and Feedback
+
+*   **Markdown Cell:**
+    Explains the validation process for the user-defined MCP tool. This crucial step ensures that the tool definition is complete and consistent, highlighting any missing descriptions or invalid data types. This provides instant feedback for refining the tool definition.
+*   **Code Cell (Function Definition):**
+    Define `validate_mcp_tool_definition(mcp_tool)`:
+    This function takes an `MCPTool` object. It checks:
+    1.  If `mcp_tool.name`, `mcp_tool.description`, `mcp_tool.output_structure` are non-empty.
+    2.  For each `param` in `mcp_tool.input_parameters`:
+        *   Checks if `param.name`, `param.type`, `param.description` are non-empty.
+        *   Attempts to `eval(param.type)` to ensure it's a valid Python type string (e.g., 'str', 'int').
+    It returns a list of validation messages (errors/warnings).
+*   **Code Cell (Execution):**
+    Execute `validation_messages = validate_mcp_tool_definition(user_defined_mcp_tool)`.
+    Print `validation_messages`.
+*   **Markdown Cell:**
+    Interprets the validation feedback, explaining any identified issues and how they would guide the user in correcting their tool definition.
+
+### Section 8: Natural Language Prompt to Tool Invocation Simulation
+
+*   **Markdown Cell:**
+    Describes how an AI agent translates a natural language prompt into a structured tool invocation. This simulation demonstrates the core agent capability of understanding user intent and mapping it to predefined MCP tool parameters.
+*   **Code Cell (Function Definition):**
+    Define `simulate_prompt_parsing(mcp_tool, prompt_text)`:
+    This function takes an `MCPTool` and a `prompt_text`. It iterates through `mcp_tool.input_parameters`. For each parameter, it uses simple `if/elif` and `in` checks (or simple `re.search` if regex library was allowed without explicit import) to find keywords in `prompt_text` and extract values.
+    Example: if `param.name` is 'gene_name', it might look for "gene X" or "gene: X".
+    It returns a dictionary where keys are parameter names, and values are dictionaries containing `{'extracted_value': value, 'mapped_successfully': bool}`. If a parameter is not found, `extracted_value` is `None` and `mapped_successfully` is `False`.
+*   **Code Cell (Execution):**
+    Define a `sample_prompt = "Analyze gene expression for gene 'SORT1' in 'liver' tissue with minimum expression 0.05."`.
+    Execute `parsed_params = simulate_prompt_parsing(visualize_variant_effects_tool, sample_prompt)`.
+    Print `parsed_params`.
+*   **Markdown Cell:**
+    Explains the simulated parsing results, showing which parameters were successfully extracted from the natural language prompt and which were not.
+
+### Section 9: Parameter Mapping Visualization
+
+*   **Markdown Cell:**
+    Visualizes the outcome of the simulated prompt parsing in a clear tabular format. This "Parameter Mapping Visualization" helps users understand how the AI agent interpreted their natural language input and assigned values to the tool's parameters.
+*   **Code Cell (Function Definition):**
+    Define `visualize_parameter_mapping(mapping_results, mcp_tool)`:
+    This function takes `mapping_results` (from `simulate_prompt_parsing`) and the original `mcp_tool`. It creates a `pandas.DataFrame` with columns: `Parameter Name`, `Expected Type`, `Extracted Value`, `Mapped Successfully`, `Description`, `Default Value`. It populates this DataFrame and displays it.
+*   **Code Cell (Execution):**
+    Execute `visualize_parameter_mapping(parsed_params, visualize_variant_effects_tool)`.
+*   **Markdown Cell:**
+    Interprets the displayed table, explaining how the `Extracted Value` for each parameter aligns (or doesn't align) with the `Expected Type` and `Default Value`.
+
+### Section 10: Generating a Python Code Snippet for the Tool
+
+*   **Markdown Cell:**
+    Demonstrates how the defined MCP tool structure translates into a Python code snippet, illustrating its encapsulation for use within an agent framework. This "Code Snippet Generation" feature helps developers understand the implementation side of MCP tools.
+*   **Code Cell (Function Definition):**
+    Define `generate_mcp_tool_snippet(mcp_tool)`:
+    This function constructs a multi-line string representing a Python function.
+    It will start with `@mcp.tools` (as a placeholder decorator), define a function signature using `mcp_tool.name` and parameters from `mcp_tool.input_parameters` (including type hints and default values). It will also include a docstring generated from `mcp_tool.description`.
+*   **Code Cell (Execution):**
+    Execute `code_snippet = generate_mcp_tool_snippet(visualize_variant_effects_tool)`.
+    Display `code_snippet` using `IPython.display.Markdown(f"```python\n{code_snippet}\n```")`.
+*   **Markdown Cell:**
+    Explains the generated Python code, detailing how the tool's definition forms the function signature and docstring, making it agent-interpretable.
+
+### Section 11: Implementing a Simulated MCP Tool Function (Execution)
+
+*   **Markdown Cell:**
+    Explains the simulation of the actual tool execution. In a real scenario, this would involve complex analysis. Here, a simplified function demonstrates how the tool would use the parameters extracted from the natural language prompt to process the synthetic data.
+*   **Code Cell (Function Definition):**
+    Define `simulate_tool_execution(data, tool_parameters)`:
+    This function takes the `synthetic_df` and the `tool_parameters` (after parsing). It performs a dummy operation: filters `data` based on `tool_parameters['gene_name']['extracted_value']`, `tool_parameters['tissue_type']['extracted_value']`, and `tool_parameters['min_expression_level']['extracted_value']` (if mapped successfully). It returns a dictionary containing a 'filtered_dataframe_head' and 'number_of_filtered_rows'.
+*   **Code Cell (Execution):**
+    Execute `simulated_results = simulate_tool_execution(synthetic_df, parsed_params)`.
+    Print `simulated_results['number_of_filtered_rows']` and display `simulated_results['filtered_dataframe_head']`.
+*   **Markdown Cell:**
+    Interprets the simulated tool execution, showing how the input parameters influenced the dummy analysis and what hypothetical results were produced.
+
+### Section 12: Core Visualization 1: Trend Plot (Time-based metrics)
+
+*   **Markdown Cell:**
+    Introduces the first core visualization: a trend plot for time-based metrics. This plot helps identify patterns and changes in data over time, crucial for understanding dynamic processes.
+*   **Code Cell (Function Definition):**
+    Define `plot_time_series(dataframe, time_col, value_col, title, x_label, y_label, color_palette='viridis', save_path=None)`:
+    This function uses `seaborn.lineplot` to create a line plot. It ensures `time_col` is a datetime type. It saves a static PNG to `save_path` if provided. It uses a color-blind friendly palette.
+*   **Code Cell (Execution):**
+    Execute `plot_time_series(synthetic_df, 'timestamp', 'gene_expression_level', 'Gene Expression Over Time', 'Date', 'Expression Level')`.
+    Include a fallback mechanism to save as PNG: `plot_time_series(synthetic_df, 'timestamp', 'gene_expression_level', 'Gene Expression Over Time', 'Date', 'Expression Level', save_path='trend_plot.png')`.
+*   **Markdown Cell:**
+    Explains the observed trend in the gene expression level over time, discussing any visible patterns or fluctuations.
+
+### Section 13: Core Visualization 2: Relationship Plot (Scatter)
+
+*   **Markdown Cell:**
+    Presents a relationship plot, specifically a scatter plot, designed to explore correlations and distributions between two continuous variables, with an optional categorical variable for grouping.
+*   **Code Cell (Function Definition):**
+    Define `plot_relationship(dataframe, x_col, y_col, hue_col=None, title, x_label, y_label, color_palette='viridis', save_path=None)`:
+    This function uses `seaborn.scatterplot`. It allows an optional `hue_col` for coloring points by category. It saves a static PNG to `save_path` if provided. It uses a color-blind friendly palette.
+*   **Code Cell (Execution):**
+    Execute `plot_relationship(synthetic_df, 'numeric_feature_A', 'numeric_feature_B', 'tissue_type', 'Relationship between Feature A and B by Tissue Type', 'Feature A', 'Feature B')`.
+    Include a fallback mechanism: `plot_relationship(synthetic_df, 'numeric_feature_A', 'numeric_feature_B', 'tissue_type', 'Relationship between Feature A and B by Tissue Type', 'Feature A', 'Feature B', save_path='relationship_plot.png')`.
+*   **Markdown Cell:**
+    Analyzes the scatter plot, describing any observed relationships between the numeric features and how the categorical `tissue_type` influences this relationship.
+
+### Section 14: Core Visualization 3: Aggregated Comparison (Bar Plot)
+
+*   **Markdown Cell:**
+    Introduces an aggregated comparison plot, typically a bar chart, to visualize and compare a numeric metric across different categories. This is useful for gaining insights into group differences.
+*   **Code Cell (Function Definition):**
+    Define `plot_categorical_comparison(dataframe, category_col, value_col, aggregation_func='mean', title, x_label, y_label, color_palette='viridis', save_path=None)`:
+    This function first aggregates the `dataframe` by `category_col` using `aggregation_func` on `value_col`. Then, it uses `seaborn.barplot` to plot the results. It saves a static PNG to `save_path` if provided. It uses a color-blind friendly palette.
+*   **Code Cell (Execution):**
+    Execute `plot_categorical_comparison(synthetic_df, 'tissue_type', 'gene_expression_level', 'mean', 'Average Gene Expression by Tissue Type', 'Tissue Type', 'Average Expression')`.
+    Include a fallback mechanism: `plot_categorical_comparison(synthetic_df, 'tissue_type', 'gene_expression_level', 'mean', 'Average Gene Expression by Tissue Type', 'Tissue Type', 'Average Expression', save_path='comparison_plot.png')`.
+*   **Markdown Cell:**
+    Interprets the bar plot, highlighting significant differences in average gene expression levels across various tissue types.
+
+### Section 15: Enabling User Interaction for Visualizations
+
+*   **Markdown Cell:**
+    Explains how interactive widgets can be integrated with the visualization functions to allow users to dynamically adjust plot parameters (e.g., selecting columns, aggregation methods, titles). This enhances usability and enables deeper exploration.
+*   **Code Cell (Function Definition & Widget Setup):**
+    Define `make_interactive_plot_time_series(dataframe)`:
+    This function wraps `plot_time_series` with `ipywidgets.interactive`. It creates `ipywidgets.Dropdown` for `value_col` selection (from `dataframe.columns` of numeric type), and `ipywidgets.Text` for `title`, `x_label`, `y_label`. It includes inline help text for each control.
+    Similarly, define `make_interactive_plot_relationship(dataframe)` and `make_interactive_plot_comparison(dataframe)`.
+*   **Code Cell (Execution):**
+    Execute `interactive_time_series_plot = make_interactive_plot_time_series(synthetic_df)` and `IPython.display.display(interactive_time_series_plot)`.
+    Repeat for `interactive_relationship_plot` and `interactive_comparison_plot`.
+*   **Markdown Cell:**
+    Demonstrates the interactive controls, showing how changing widget values instantly updates the corresponding plot, facilitating exploratory data analysis.
+
+### Section 16: Conclusion
+
+*   **Markdown Cell:**
+    Summarizes the key concepts learned throughout the notebook, reiterating the importance of well-defined MCP tools for robust AI agent interaction. It emphasizes how the Paper2Agent framework, by converting research papers into interactive agents, streamlines scientific workflows, enhances reproducibility, and lowers barriers to adopting new methodologies. This lab provided a practical understanding of how `MCP_tools` and `MCP_prompts` work together to enable natural language querying and autonomous execution through an AI agent.
+
+### Section 17: References
+
+*   **Markdown Cell:**
+    Lists the key references that underpin the concepts explored in this notebook.
+    *   Paper2Agent: Xinyi Hou, Yanjie Zhao, Shenao Wang, and Haoyu Wang. Model context protocol (mcp): Landscape, security threats, and future research directions. arXiv preprint arXiv:2503.23278, 2025.
+    *   `pandas`: The pandas development team. (2020). pandas-dev/pandas: Pandas. Zenodo. DOI: 10.5281/zenodo.3509134
+    *   `numpy`: Harris, C.R., Millman, K.J., van der Walt, S.J. et al. Array programming with NumPy. Nature 585, 357–362 (2020). DOI: 10.1038/s41586-020-2649-2
+    *   `matplotlib`: Hunter, J. D. (2007). Matplotlib: A 2D graphics environment. Computing in Science & Engineering, 9(3), 90-95.
+    *   `seaborn`: Waskom, M. L. (2021). seaborn: statistical data visualization. Journal of Open Source Software, 6(60), 3021.
+    *   `ipywidgets`: Bussonnier, Matthias, et al. (2018). Jupyter Widgets: Interactive Controls for Jupyter Notebooks. The Journal of Open Source Software, 3(22), 614.
 
----
-
-### Section 1: Introduction to AlphaGenome Variant Explorer
-
-*   **Markdown cell with the explanations and formulae**:
-    This notebook explores the core functionality of AlphaGenome, an AI agent designed to interpret genetic variants and predict their regulatory effects across various biological modalities. We will simulate how users can interact with its conceptual tools, `score_variant_effect()` and `visualize_variant_effects()`, using synthetic data.
-
-    The primary goal is to understand the impact of single-nucleotide variants (SNVs) on gene regulation. AlphaGenome quantifies this impact using a `quantile_score`, which indicates how extreme a variant's predicted effect is relative to a background distribution of other variants. A higher score suggests a stronger, more significant regulatory effect.
-
-    The `quantile_score` can be conceptualized as:
-    $$ \text{quantile\_score}(v) = P(\text{effect}(v') \leq \text{effect}(v)) $$
-    where $v$ is the variant in question, $v'$ represents a random variant from a reference set, and $P$ is the probability. This score ranges from 0 to 1.
-
-    We will also visualize these effects, such as changes in gene expression or chromatin accessibility, across a genomic region.
-
-*   **Code cell with what function it should implement**:
-    No function implementation in this cell. This cell provides the initial context and overview.
-
-*   **Code cell with execution of the function**:
-    No code execution in this cell.
-
-*   **Markdown cell with the explanation for the execution of the cell**:
-    This introductory section sets the stage for the lab, outlining the purpose of AlphaGenome and the key concepts, like the `quantile_score`, that will be explored. It ensures learners understand the context before diving into the interactive components.
-
----
-
-### Section 2: Setup and Library Imports
-
-*   **Markdown cell with the explanations and formulae**:
-    Before proceeding, we need to import all necessary Python libraries. These libraries provide tools for data manipulation, numerical operations, interactive widgets, and advanced data visualization. We commit to using only open-source libraries from PyPI.
-
-*   **Code cell with what function it should implement**:
-    This cell will contain import statements for `pandas`, `numpy`, `matplotlib.pyplot`, `seaborn`, `plotly.express`, and `ipywidgets`. It will also set up default visualization styles (e.g., seaborn theme, matplotlib font size).
-
-*   **Code cell with execution of the function**:
-    This cell will execute the import statements and style configurations.
-
-*   **Markdown cell with the explanation for the execution of the cell**:
-    Executing this cell loads all required modules into the current Jupyter session and configures the plotting environment. This ensures that all subsequent operations and visualizations can be performed without errors and with consistent aesthetics, adhering to readability and color-blind friendly guidelines.
-
----
-
-### Section 3: Generating Synthetic Genetic Variant Data
-
-*   **Markdown cell with the explanations and formulae**:
-    To simulate the user experience with AlphaGenome without relying on actual genetic data or external APIs, we will generate a synthetic dataset of genetic variants. This dataset will mimic realistic variant characteristics, including chromosome, genomic position, reference and alternate alleles, and organism. The data will confirm expected column names and data types for subsequent processing.
-
-*   **Code cell with what function it should implement**:
-    This cell will define a Python function named `generate_synthetic_genetic_variants`.
-    -   It will take parameters such as `num_variants`, `chromosomes_list`, `min_pos`, `max_pos`, `alleles_list`, and `organisms_list`.
-    -   It will randomly select values for each variant's attributes based on the input parameters.
-    -   It will return a pandas DataFrame containing the synthetic variants.
-
-*   **Code cell with execution of the function**:
-    This cell will call `generate_synthetic_genetic_variants` with specific parameters:
-    -   `num_variants=10`
-    -   `chromosomes_list=["chr1", "chr3", "chr9", "chr19", "chr22"]`
-    -   `min_pos=1_000_000`, `max_pos=100_000_000`
-    -   `alleles_list=["A", "T", "C", "G"]`
-    -   `organisms_list=["human", "mouse"]`
-    The output DataFrame will be stored in a variable like `synthetic_variants_df`.
-
-*   **Markdown cell with the explanation for the execution of the cell**:
-    We execute the `generate_synthetic_genetic_variants` function to create our initial set of 10 synthetic genetic variants. This dataset will serve as the input for simulating AlphaGenome's predictions. The small number of variants ensures the notebook runs quickly, meeting the performance constraints.
-
----
-
-### Section 4: Generating Synthetic AlphaGenome Predictions (Scores)
-
-*   **Markdown cell with the explanations and formulae**:
-    AlphaGenome predicts the functional consequences of genetic variants, providing quantitative scores like `quantile_score` and `log2fc_expression` across various modalities and tissue types. Here, we generate synthetic data to mimic these predictions. This data will be structured to allow for multi-modal and multi-tissue comparisons.
-
-*   **Code cell with what function it should implement**:
-    This cell will define a Python function named `simulate_variant_effect_scoring`.
-    -   It will take `variants_df`, `modalities_list`, `tissue_cell_types_list` as inputs.
-    -   For each variant, modality, and tissue, it will generate a random `quantile_score` (between 0.001 and 0.999) and a `log2fc_expression` (between -2.0 and 2.0).
-    -   It will return a pandas DataFrame with these simulated prediction scores.
-
-*   **Code cell with execution of the function**:
-    This cell will call `simulate_variant_effect_scoring` with:
-    -   `variants_df=synthetic_variants_df`
-    -   `modalities_list=["RNA-seq", "ATAC-seq", "ChIP-seq_histone", "Splice_Sites"]`
-    -   `tissue_cell_types_list=["Liver", "Muscle", "Brain", "Lung", "Kidney"]`
-    The output DataFrame will be stored in `synthetic_scores_df`.
-
-*   **Markdown cell with the explanation for the execution of the cell**:
-    By running `simulate_variant_effect_scoring`, we populate a DataFrame with synthetic prediction scores for our generated variants across different modalities and tissues. This mimics the output of AlphaGenome's `score_variant_effect()` tool and provides the quantitative basis for our subsequent analysis and visualizations.
-
----
-
-### Section 5: Generating Synthetic AlphaGenome Visualizations (Trend Data)
-
-*   **Markdown cell with the explanations and formulae**:
-    AlphaGenome also provides visualizations of variant effects across genomic regions. To replicate this, we will generate synthetic data for a "trend plot," showing how a predicted effect (e.g., expression change) varies with genomic position relative to the variant center. This will demonstrate the visual output of the `visualize_variant_effects()` tool.
-
-*   **Code cell with what function it should implement**:
-    This cell will define a Python function named `simulate_visualization_data`.
-    -   It will take `selected_variant_id`, `selected_modality`, `selected_tissue`, `plot_interval_width`, `plot_interval_shift` as inputs.
-    -   It will generate `genomic_position_relative` values within the specified interval around the variant center.
-    -   It will generate a synthetic `predicted_effect_value` by simulating a peak or trough centered around the variant, with values gradually returning to baseline further away. For example, a Gaussian-like function could be used to generate values.
-    -   It will return a pandas DataFrame suitable for plotting.
-
-*   **Code cell with execution of the function**:
-    This cell will call `simulate_visualization_data` with:
-    -   `selected_variant_id=synthetic_variants_df['variant_id'].iloc[0]` (e.g., the first variant)
-    -   `selected_modality="RNA-seq"`
-    -   `selected_tissue="Liver"`
-    -   `plot_interval_width=5000`
-    -   `plot_interval_shift=0`
-    The output DataFrame will be stored in `synthetic_trend_df`.
-
-*   **Markdown cell with the explanation for the execution of the cell**:
-    This step generates a sample dataset for a genomic trend plot for one of our synthetic variants. This data simulates how AlphaGenome might show the predicted effect of a variant across a localized genomic region. This `synthetic_trend_df` will be used as a default for the interactive trend visualization.
-
----
-
-### Section 6: Data Validation and Summary Statistics
-
-*   **Markdown cell with the explanations and formulae**:
-    Ensuring data quality is crucial for reliable analysis. This section performs basic validation checks on our synthetic datasets to confirm column names, data types, and the absence of critical missing values. It also provides summary statistics for numeric fields, which helps in understanding the distribution and range of our simulated predictions.
-
-*   **Code cell with what function it should implement**:
-    This cell will define two Python functions:
-    1.  `validate_data(df, expected_cols, expected_dtypes, critical_na_cols)`:
-        -   Checks if `df` contains all `expected_cols`.
-        -   Verifies if column data types match `expected_dtypes`.
-        -   Asserts that there are no missing values in `critical_na_cols`.
-        -   Logs any discrepancies.
-        -   Returns `True` if valid, `False` otherwise.
-    2.  `display_summary_statistics(df)`:
-        -   Calculates and returns `df.describe()` for numeric columns.
-
-*   **Code cell with execution of the function**:
-    This cell will:
-    1.  Define `expected_variant_cols`, `expected_variant_dtypes`, `critical_variant_na_cols` for `synthetic_variants_df`.
-    2.  Call `validate_data(synthetic_variants_df, ...)`.
-    3.  Call `display_summary_statistics(synthetic_variants_df)`.
-    4.  Repeat steps 1-3 for `synthetic_scores_df` using appropriate expected columns and types.
-
-*   **Markdown cell with the explanation for the execution of the cell**:
-    By executing the validation and summary statistics functions, we confirm the structural integrity and basic characteristics of our synthetic variant and prediction data. This step is vital for ensuring that our simulated data is robust enough for demonstration, mirroring real-world data quality checks. The output helps us quickly understand the range of `quantile_score` and `log2fc_expression` values generated.
-
----
-
-### Section 7: Interactive Inputs: Variant Selection
-
-*   **Markdown cell with the explanations and formulae**:
-    One of the key features of the AlphaGenome agent is its ability to take user-specified genetic variant details as input. This section demonstrates this by creating interactive widgets that allow users to select a variant from our synthetic dataset. This simulates the "Variant Input Form" feature.
-
-*   **Code cell with what function it should implement**:
-    This cell will use `ipywidgets.Dropdown` to create an interactive selector.
-    -   The dropdown will list the `variant_id` from `synthetic_variants_df`.
-    -   An `observe` function will be defined to update a global `selected_variant_id` variable whenever the dropdown value changes.
-    -   The function will display the selected variant's details (chromosome, position, alleles, organism) to confirm the selection.
-
-*   **Code cell with execution of the function**:
-    This cell will create and display the `ipywidgets.Dropdown` populated with `variant_id`s.
-    It will register the `observe` callback to update `selected_variant_id`.
-
-*   **Markdown cell with the explanation for the execution of the cell**:
-    This interactive dropdown allows users to easily select a specific synthetic genetic variant. The selected variant ID will then be used as input for subsequent prediction simulations and visualizations, mimicking a user interacting with the AlphaGenome agent's variant input form. Inline help text, "Select a genetic variant from the generated synthetic dataset," is implicitly provided by the dropdown label.
-
----
-
-### Section 8: Interactive Inputs: Modality and Visualization Parameters
-
-*   **Markdown cell with the explanations and formulae**:
-    The AlphaGenome agent allows users to specify which modalities they are interested in and fine-tune visualization parameters. This section provides interactive widgets for selecting a modality (e.g., RNA-seq, ATAC-seq) and adjusting parameters like the genomic interval width and shift from the variant center for the trend plots. These controls simulate the "Modality Selection" and "Parameter Sliders" features.
-
-*   **Code cell with what function it should implement**:
-    This cell will use `ipywidgets.Dropdown` for modality selection and `ipywidgets.IntSlider` for visualization parameters.
-    -   A dropdown will be created for `modality` with options from `modalities_list`.
-    -   Two sliders will be created for `plot_interval_width` (e.g., 1000 to 10000 bp) and `plot_interval_shift` (e.g., -2000 to 2000 bp).
-    -   `observe` functions will be defined for each widget to update global `selected_modality`, `plot_interval_width_param`, and `plot_interval_shift_param` variables.
-    -   A descriptive label and inline help text will accompany each control.
-
-*   **Code cell with execution of the function**:
-    This cell will create and display the `ipywidgets.Dropdown` and `ipywidgets.IntSlider` instances.
-    It will register the `observe` callbacks for each widget.
-
-*   **Markdown cell with the explanation for the execution of the cell**:
-    These interactive controls enable users to customize the specific biological context (modality) and visual scope for their variant effect predictions. This directly demonstrates how users could influence the `visualize_variant_effects()` tool's output within an AI agent framework. The sliders and dropdowns offer intuitive control, along with help text for clarity.
-
----
-
-### Section 9: Simulating `score_variant_effect()` and Displaying Summary
-
-*   **Markdown cell with the explanations and formulae**:
-    This section simulates the execution of AlphaGenome's `score_variant_effect()` tool based on the user-selected variant and modality. It then presents a summary of the predicted functional consequences, focusing on the `quantile_score` values. This directly showcases the "Results Summary" feature.
-
-*   **Code cell with what function it should implement**:
-    This cell will define a Python function named `display_variant_scores_summary`.
-    -   It will take `selected_variant_id` and `selected_modality` as inputs.
-    -   It will filter the `synthetic_scores_df` to show only the scores for the chosen variant and modality across all tissue/cell types.
-    -   It will present these filtered results in a clearly formatted pandas DataFrame.
-
-*   **Code cell with execution of the function**:
-    This cell will call `display_variant_scores_summary` using the current values of `selected_variant_id` and `selected_modality` (from interactive widgets).
-
-*   **Markdown cell with the explanation for the execution of the cell**:
-    Executing this cell provides a concise tabular summary of the predicted effects for the selected variant and modality. This output mimics the quantitative `quantile_score` values that AlphaGenome would generate, allowing users to quickly grasp the predicted impact across different tissues or cell types. The table helps to consolidate and interpret the raw prediction data.
-
----
-
-### Section 10: Explanation of `quantile_score`
-
-*   **Markdown cell with the explanations and formulae**:
-    The `quantile_score` is a critical metric provided by AlphaGenome to quantify the predicted effect of a genetic variant. It measures how "extreme" the observed effect of a variant is compared to a null distribution of effects from other, typically non-functional, variants.
-
-    Specifically, a `quantile_score` of $0.99$ means that the variant's predicted effect is stronger than $99\%$ of the effects observed in the reference distribution. Conversely, a score of $0.01$ would mean it's weaker than $99\%$ of the reference.
-
-    Let $E(v)$ be the predicted effect of a variant $v$ (e.g., change in gene expression). Let $D$ be the distribution of effects for a large set of background variants. The `quantile_score` is defined as:
-    $$ \text{Quantile Score}(v) = P(E(v') \leq E(v) \mid v' \in D) $$
-    This provides a normalized and easily interpretable measure of effect size.
-
-*   **Code cell with what function it should implement**:
-    No function implementation in this cell. This cell purely provides conceptual explanation.
-
-*   **Code cell with execution of the function**:
-    No code execution in this cell.
-
-*   **Markdown cell with the explanation for the execution of the cell**:
-    This section deepens the understanding of the `quantile_score`, providing necessary context for interpreting the numerical results from AlphaGenome. By explaining its definition and implications, users can better appreciate the significance of the predicted variant effects.
-
----
-
-### Section 11: Interactive Visualization: Trend Plot (Gene Expression/Chromatin Accessibility)
-
-*   **Markdown cell with the explanations and formulae**:
-    This visualization, a trend plot, showcases how a variant's predicted effect, such as gene expression change or chromatin accessibility, varies across a genomic region. This directly corresponds to the interactive visualizations from the `visualize_variant_effects()` tool and demonstrates the "Trend Plot (Line/Area)" feature. The plot interval width and shift from the variant center are dynamically controlled by the user.
-
-*   **Code cell with what function it should implement**:
-    This cell will define a Python function named `plot_variant_effect_trend`.
-    -   It will take `selected_variant_id`, `selected_modality`, `selected_tissue`, `plot_interval_width`, `plot_interval_shift` as inputs.
-    -   It will call `simulate_visualization_data` to generate new synthetic trend data based on the current interactive parameter values.
-    -   It will use `plotly.express.line` or `plotly.express.area` to create an interactive plot:
-        -   X-axis: `genomic_position_relative`
-        -   Y-axis: `predicted_effect_value`
-        -   Title: Clearly indicates variant, modality, and tissue.
-        -   Labels: "Relative Genomic Position (bp)" and "Predicted Effect Value".
-    -   It will provide a `matplotlib.pyplot` fallback for static display.
-
-*   **Code cell with execution of the function**:
-    This cell will create an `ipywidgets.interactive_output` widget.
-    It will bind `plot_variant_effect_trend` to the current values of `selected_variant_id`, `selected_modality`, `selected_tissue`, `plot_interval_width_param`, and `plot_interval_shift_param`.
-
-*   **Markdown cell with the explanation for the execution of the cell**:
-    By adjusting the sliders for plot interval width and shift, users can dynamically explore the simulated effect profile of the chosen variant. This interactive plot visually demonstrates how AlphaGenome allows biologists to pinpoint the precise genomic regions affected by a variant and understand the magnitude and pattern of these effects for a selected modality and tissue.
-
----
-
-### Section 12: Interactive Visualization: Relationship Plot (Quantile Score vs. Tissue Type)
-
-*   **Markdown cell with the explanations and formulae**:
-    Understanding how a variant's effect translates across different tissue or cell types is crucial. This relationship plot (scatter plot) allows users to examine correlations between `quantile_score` values for a selected variant across different contexts. This corresponds to the "Relationship Plot (Scatter Plot)" feature. For simplicity, we will compare the `quantile_score` of the selected variant in one tissue type against another.
-
-*   **Code cell with what function it should implement**:
-    This cell will define a Python function named `plot_quantile_score_relationship`.
-    -   It will take `selected_variant_id`, `selected_modality`, `tissue1`, `tissue2` as inputs.
-    -   It will filter `synthetic_scores_df` for the `selected_variant_id` and `selected_modality`, then pivot the data to have `tissue_cell_type` as columns.
-    -   It will use `plotly.express.scatter` to create an interactive scatter plot:
-        -   X-axis: `quantile_score` for `tissue1`.
-        -   Y-axis: `quantile_score` for `tissue2`.
-        -   Title: Indicates variant, modality, and tissues being compared.
-        -   Labels: "Quantile Score in [Tissue 1]" and "Quantile Score in [Tissue 2]".
-    -   It will provide a `seaborn.scatterplot` fallback for static display.
-
-*   **Code cell with execution of the function**:
-    This cell will create two `ipywidgets.Dropdown` widgets for `tissue1` and `tissue2` selection (from `tissue_cell_types_list`).
-    It will then create an `ipywidgets.interactive_output` widget, binding `plot_quantile_score_relationship` to `selected_variant_id`, `selected_modality`, `tissue1_dropdown`, and `tissue2_dropdown`.
-
-*   **Markdown cell with the explanation for the execution of the cell**:
-    This interactive scatter plot enables users to visually assess if a variant's predicted effect (quantified by `quantile_score`) is consistent or highly variable across different tissue contexts for a given modality. This is particularly useful for identifying tissue-specific regulatory effects or broadly acting variants, enhancing the interpretation of AlphaGenome's multi-modal predictions.
-
----
-
-### Section 13: Interactive Visualization: Aggregated Comparison (Variant Effects Across Tissues)
-
-*   **Markdown cell with the explanations and formulae**:
-    To get a comprehensive overview of a variant's effects across multiple tissues or cell types for a chosen modality, an aggregated comparison plot is highly effective. This section provides a bar plot (or heatmap) to visualize `quantile_score` or `log2fc_expression` values, demonstrating the "Aggregated Comparison (Bar/Heatmap)" feature.
-
-*   **Code cell with what function it should implement**:
-    This cell will define a Python function named `plot_aggregated_variant_effects`.
-    -   It will take `selected_variant_id`, `selected_modality`, and `metric` (e.g., "quantile_score", "log2fc_expression") as inputs.
-    -   It will filter `synthetic_scores_df` for the `selected_variant_id` and `selected_modality`.
-    -   It will use `plotly.express.bar` to create an interactive bar chart:
-        -   X-axis: `tissue_cell_type`
-        -   Y-axis: `metric` (e.g., `quantile_score`)
-        -   Title: "Predicted [Metric] for [Variant ID] in [Modality] Across Tissues".
-        -   Labels: "Tissue/Cell Type" and "[Metric]".
-        -   Color: `tissue_cell_type` for distinction.
-    -   It will provide a `seaborn.barplot` fallback for static display.
-
-*   **Code cell with execution of the function**:
-    This cell will create a `ipywidgets.Dropdown` for `metric_selection` (e.g., "quantile_score", "log2fc_expression").
-    It will then create an `ipywidgets.interactive_output` widget, binding `plot_aggregated_variant_effects` to `selected_variant_id`, `selected_modality`, and `metric_selection_dropdown`.
-
-*   **Markdown cell with the explanation for the execution of the cell**:
-    This bar plot offers a quick and clear comparison of the selected variant's impact across a range of tissues for a specific biological modality. This type of aggregated visualization is invaluable for identifying tissues where a variant has the strongest or weakest regulatory effects, supporting the understanding of its functional consequences.
-
----
-
-### Section 14: Interpreting Results
-
-*   **Markdown cell with the explanations and formulae**:
-    Interpreting the multi-modal predictions and visualizations from AlphaGenome requires careful consideration of several factors:
-
-    1.  **`Quantile Score` Significance**: High `quantile_score` values (e.g., > 0.95 or < 0.05) indicate a strong, potentially functional effect. Scores closer to $0.5$ suggest an effect similar to background variants.
-    2.  **Modality-Specific Effects**: A variant might have a strong effect in one modality (e.g., RNA-seq) but little to no effect in another (e.g., ATAC-seq). This suggests a specific regulatory mechanism.
-    3.  **Tissue/Cell Type Specificity**: Effects can vary greatly across different tissues. Identifying these specific patterns helps pinpoint the relevant biological contexts for the variant's function.
-    4.  **Trend Plot Patterns**: Peaks or troughs in trend plots precisely at the variant's position indicate a direct, localized impact on the predicted effect, such as altered motif binding or expression.
-
-    By combining insights from the numerical summaries and all three types of visualizations, researchers can build a comprehensive understanding of a genetic variant's regulatory role.
-
-*   **Code cell with what function it should implement**:
-    No function implementation in this cell. This cell provides interpretive guidance.
-
-*   **Code cell with execution of the function**:
-    No code execution in this cell.
-
-*   **Markdown cell with the explanation for the execution of the cell**:
-    This section provides a crucial narrative for connecting the generated synthetic data and visualizations to real-world biological interpretation. It guides learners on how to synthesize the various outputs from the simulated AlphaGenome agent to draw meaningful conclusions about genetic variant effects.
-
----
-
-### Section 15: Conclusion
-
-*   **Markdown cell with the explanations and formulae**:
-    This interactive Jupyter Notebook has provided a hands-on experience in exploring the conceptual capabilities of the AlphaGenome agent for genetic variant interpretation. Through synthetic data and interactive visualizations, we have demonstrated how an AI agent can make complex genomic analyses more accessible.
-
-    We have seen how to:
-    -   Simulate genetic variants and their multi-modal regulatory effects.
-    -   Interpret `quantile_score` values as indicators of variant impact.
-    -   Utilize interactive trend plots to visualize localized effects across genomic regions.
-    -   Compare variant effects across different tissue types and modalities using relationship and aggregated comparison plots.
-
-    This lab underscores the potential of AI agents, like AlphaGenome, to democratize access to advanced genomic insights, enabling biologists and researchers to focus on biological discovery rather than technical implementation details.
-
-*   **Code cell with what function it should implement**:
-    No function implementation in this cell. This cell summarizes the learning.
-
-*   **Code cell with execution of the function**:
-    No code execution in this cell.
-
-*   **Markdown cell with the explanation for the execution of the cell**:
-    This concluding section recaps the key learning outcomes achieved through the interactive lab. It reinforces the central message of making complex genomic interpretation accessible via AI agents, aligning with the objectives of the AlphaGenome agent case study.
-
----
-
-### Section 16: References
-
-*   **Markdown cell with the explanations and formulae**:
-    This section credits the foundational research paper and any external libraries used in the notebook.
-
-    **Libraries Used:**
-    -   `pandas`: Flexible and powerful data analysis and manipulation library for Python.
-    -   `numpy`: The fundamental package for numerical computation in Python.
-    -   `matplotlib`: A comprehensive library for creating static, animated, and interactive visualizations in Python.
-    -   `seaborn`: A Python data visualization library based on matplotlib, providing a high-level interface for drawing attractive and informative statistical graphics.
-    -   `plotly`: An interactive, open-source, and browser-based graphing library for Python.
-    -   `ipywidgets`: Interactive HTML widgets for Jupyter notebooks and the IPython kernel.
-
-    **Conceptual References:**
-    [1] Ziga Avsec, Natasha Latysheva, Jun Cheng, Guido Novati, Kyle R Taylor, Tom Ward, Clare Bycroft, Lauren Nicolaisen, Eirini Arvaniti, Joshua Pan, et al. Alphagenome: advancing regulatory variant effect prediction with a unified dna sequence model. bioRxiv, pages 2025–06, 2025.
-    [2] Section: AlphaGenome Agent for Genomic Data Interpretation, [Document Title], [Full URL or document identifier if applicable].
-
-*   **Code cell with what function it should implement**:
-    No function implementation in this cell. This cell lists references.
-
-*   **Code cell with execution of the function**:
-    No code execution in this cell.
-
-*   **Markdown cell with the explanation for the execution of the cell**:
-    This section provides due credit to the tools and research that underpin this interactive lab, adhering to academic and open-source best practices.
